@@ -387,8 +387,9 @@ int main (int argc, char *argv[]) {
         printf("Listening at SF%i on %.6lf Mhz.\n", sf,(double)freq/1000000);
         printf("------------------\n");
         while(1) {
-            receivepacket();
-            sendToMQTT(message);
+            if(receivepacket()){ //Lo hacemos condicional para ver su valor booleano
+                sendToMQTT(message);
+            }
             delay(100);
         }
     }
