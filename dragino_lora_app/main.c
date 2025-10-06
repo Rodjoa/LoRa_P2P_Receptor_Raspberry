@@ -252,7 +252,7 @@ void setupMQTT() {
 
     while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
         printf("Failed to connect, return code %d. Reconnecting in 5 seconds...\n", rc);
-        sleep(5);
+        delay(5);
     }
     printf("MQTT connected successfully!\n");
 }
@@ -270,7 +270,7 @@ void sendToMQTT(char* payload) {
         printf("Failed to publish message, return code %d. Trying to reconnect...\n", rc);
         while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
             printf("Reconnect failed, return code %d. Retrying in 5 seconds...\n", rc);
-            sleep(5);
+            delay(5);
         }
         printf("Reconnected to MQTT broker.\n");
     }
