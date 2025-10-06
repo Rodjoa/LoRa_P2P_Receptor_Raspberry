@@ -6,7 +6,7 @@
  *
  *******************************************************************************/
 
-#include <string>
+#include <string.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -20,6 +20,30 @@
 
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
+
+/*Agregadas por mi para el MQTT*/
+#include "MQTTClient.h"
+#define ADDRESS     "tcp://test.mosquitto.org:1883"
+#define CLIENTID    "ProtoLoRa_pi3"
+#define TOPIC       "MQTT_Examples"
+#define QOS         1
+#define TIMEOUT     10000L
+/*Variables globales*/
+MQTTClient client;
+MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
+/*Fin agregadas por mi*/
+
+
+/*Observaciones:
+1- No hay usuario/contraseña: Estás usando el broker público de test 
+(test.mosquitto.org), que no requiere credenciales. Si en el futuro usas 
+un broker privado, tendrías que asignar 
+conn_opts.username y conn_opts.password.
+
+
+2- Persistencia nula: MQTTCLIENT_PERSISTENCE_NONE → no guarda mensajes
+en disco si hay caída de conexión. Para pruebas está bien.
+*/
 
 
 // #############################################
@@ -148,7 +172,7 @@ typedef unsigned char byte;
 
 static const int CHANNEL = 0;
 
-char message[256];
+char message[50];  //La achicamos de 256 a este valor por max value
 
 bool sx1272 = true;
 
@@ -300,8 +324,57 @@ void SetupLoRa()
     writeReg(REG_LNA, LNA_MAX_GAIN);
 
 }
+//==================Creamos las funciones para MQTT==================================
 
-boolean receive(char *payload) {
+void setupMQTT() {
+    int rc;
+    const char* uri = ADDRESS;
+
+    MQTTClient_create(&client, uri, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL);
+    conn_opts.keepAliveInterval = 20;
+    conn_opts.cleansession = 1;
+
+    // Intentar conectar hasta que tenga éxito
+    while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
+        printf("Failed to connect, return code %d. Reconnecting in 5 seconds...\n", rc);
+        sleep(5);  // Espera antes de intentar de nuevo
+    }
+
+    printf("MQTT connected successfully!\n");
+}
+
+
+void sendToMQTT(char* payload) {
+    MQTTClient_message pubmsg = MQTTClient_message_initializer;
+    MQTTClient_deliveryToken token;
+
+    pubmsg.payload = payload;
+    pubmsg.payloadlen = (int)strlen(payload);
+    pubmsg.qos = QOS;
+    pubmsg.retained = 0;
+
+    int rc;
+
+    // Intentar publicar con reconexión si falla
+    while ((rc = MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
+        printf("Failed to publish message, return code %d. Trying to reconnect...\n", rc);
+        // Reintento conexión
+        while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
+            printf("Reconnect failed, return code %d. Retrying in 5 seconds...\n", rc);
+            sleep(5);
+        }
+        printf("Reconnected to MQTT broker.\n");
+    }
+
+    MQTTClient_waitForCompletion(client, token, TIMEOUT);
+    printf("Message sent: %s\n", payload);
+}
+
+
+
+//=====================Fin funciones MQTT==============================
+
+boolean receive(char *payload) { // payload apunta a message
     // clear rxDone
     writeReg(REG_IRQ_FLAGS, 0x40);
 
@@ -336,7 +409,7 @@ void receivepacket() {
 
     if(digitalRead(dio0) == 1)
     {
-        if(receive(message)) {
+        if(receive(message)) { //Aquí le pasas un puntero al arreglo mssage a la función receive().
             byte value = readReg(REG_PKT_SNR_VALUE);
             if( value & 0x80 ) // The SNR sign bit is 1
             {
@@ -440,6 +513,7 @@ int main (int argc, char *argv[]) {
     wiringPiSPISetup(CHANNEL, 500000);
 
     SetupLoRa();
+    setupMQTT();   //Iniciamos el MQTT (Agregado)
 
     if (!strcmp("sender", argv[1])) {
         opmodeLora();
@@ -470,7 +544,8 @@ int main (int argc, char *argv[]) {
         printf("------------------\n");
         while(1) {
             receivepacket(); 
-            delay(1);
+            sendToMQTT(message); //  Linea agregada
+            delay(15);
         }
 
     }
