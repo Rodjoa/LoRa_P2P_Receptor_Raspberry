@@ -309,6 +309,13 @@ bool receivepacket() {    //Modificaremos esto para controlar la llegada de nuev
             rssicorr = sx1272 ? 139 : 157;
             printf("Packet RSSI: %d, RSSI: %d, SNR: %li, Length: %i\n", readReg(0x1A)-rssicorr, readReg(0x1B)-rssicorr, SNR, (int)receivedbytes);
             printf("Payload: %s\n", message);
+
+            
+            // Limpiamos IRQ para que dio0 vuelva a LOW
+            writeReg(REG_IRQ_FLAGS, IRQ_LORA_RXDONE_MASK);
+            // Preparamos receptor para siguiente paquete
+            opmode(OPMODE_RX);
+            
             return true;
         }
         else{
