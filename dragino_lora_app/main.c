@@ -385,7 +385,7 @@ int main (int argc, char *argv[]) {
         while(1) {
             receivepacket();
             sendToMQTT(message);
-            delay(15);
+            delay(15000);
         }
     }
 
