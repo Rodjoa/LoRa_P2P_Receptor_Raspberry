@@ -297,7 +297,7 @@ bool receive(char *payload) {
     return true;
 }
 
-void receivepacket() {
+bool receivepacket() {    //Modificaremos esto para controlar la llegada de nuevos paquetes por variable booleana (cambiamos de void a bool) (agrega returns booleanos)
     long int SNR;
     int rssicorr;
     if(digitalRead(dio0) == 1) {
@@ -309,6 +309,10 @@ void receivepacket() {
             rssicorr = sx1272 ? 139 : 157;
             printf("Packet RSSI: %d, RSSI: %d, SNR: %li, Length: %i\n", readReg(0x1A)-rssicorr, readReg(0x1B)-rssicorr, SNR, (int)receivedbytes);
             printf("Payload: %s\n", message);
+            return true;
+        }
+        else{
+            return false;
         }
     }
 }
@@ -385,7 +389,7 @@ int main (int argc, char *argv[]) {
         while(1) {
             receivepacket();
             sendToMQTT(message);
-            delay(15000);
+            delay(100);
         }
     }
 
