@@ -378,6 +378,8 @@ void txlora(byte *frame, byte datalen) {
 
 /* ################# MAIN ################# */
 int main (int argc, char *argv[]) {
+    setvbuf(stdout, NULL, _IONBF, 0);  // <-- Desactiva el buffer del printf
+    printf("Debug activado (stdout sin buffer)\n");
     if (argc < 2) {
         printf ("Usage: argv[0] sender|rec [message]\n");
         exit(1);
