@@ -263,7 +263,9 @@ void setupMQTT() {
 }
 
 void sendToMQTT(char* payload) {
-    printf("Entrando a sendToMQTT"); //DEBUG
+    printf("Entrando a sendToMQTT\n");  // agrega \n
+    fflush(stdout);                     // fuerza impresion inmediata
+
 
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
