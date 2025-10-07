@@ -263,6 +263,8 @@ void setupMQTT() {
 }
 
 void sendToMQTT(char* payload) {
+    printf("\n Entrando a funcion sentToMQTT()\n");
+
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
     pubmsg.payload = payload;
@@ -303,7 +305,7 @@ bool receive(char *payload) {
         byte receivedCount = readReg(REG_RX_NB_BYTES);
         receivedbytes = receivedCount;
         writeReg(REG_FIFO_ADDR_PTR, currentAddr);
-        for(int i = 0; i < receivedCount; i++)
+        for(int i = 0; i < receivedCount; i++) //VER QUITAR ESTE FOR
             payload[i] = (char)readReg(REG_FIFO);
     }
     return true;
