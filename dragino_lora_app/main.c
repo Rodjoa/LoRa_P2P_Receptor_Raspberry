@@ -263,7 +263,7 @@ void setupMQTT() {
 }
 
 void sendToMQTT(char* payload) {
-    printf("\n Entrando a funcion sentToMQTT()\n");
+    fprintf(stderr, "Entrando a funcion sendToMQTT()\n");
 
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
@@ -282,7 +282,7 @@ void sendToMQTT(char* payload) {
         printf("Reconnected to MQTT broker.\n");
     }
     MQTTClient_waitForCompletion(client, token, TIMEOUT);
-    printf("\n Antes de enviar Message sent... a funcion sentToMQTT()\n");
+    fprintf(stderr, "Antes de enviar por sendToMQTT()\n");
     printf("Message sent: %s\n", payload);
 }
 
