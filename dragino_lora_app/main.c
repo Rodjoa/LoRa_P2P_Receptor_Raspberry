@@ -263,6 +263,8 @@ void setupMQTT() {
 }
 
 void sendToMQTT(char* payload) {
+    printf("Entrando a sendToMQTT"); //DEBUG
+
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
     pubmsg.payload = payload;
@@ -285,12 +287,14 @@ void sendToMQTT(char* payload) {
 
 /* ############ FUNCIONES DE RECEPCION ############ */
 bool receive(char *payload) {
-    // Limpiar el buffer antes de recibir
-    memset(payload, 0, 50);
+
     
+    //Debugeo
+    printf("\n Entrando a funcion receive() \n")
+    
+
     writeReg(REG_IRQ_FLAGS, 0x40);
     int irqflags = readReg(REG_IRQ_FLAGS);
-    
     if((irqflags & 0x20) == 0x20) {
         printf("CRC error\n");
         writeReg(REG_IRQ_FLAGS, 0x20);
@@ -299,28 +303,20 @@ bool receive(char *payload) {
         byte currentAddr = readReg(REG_FIFO_RX_CURRENT_ADDR);
         byte receivedCount = readReg(REG_RX_NB_BYTES);
         receivedbytes = receivedCount;
-        
-        // Verificar que el mensaje no este vacio
-        if (receivedCount == 0) {
-            return false;
-        }
-        
         writeReg(REG_FIFO_ADDR_PTR, currentAddr);
-
         for(int i = 0; i < receivedCount; i++)
             payload[i] = (char)readReg(REG_FIFO);
-
-        // Terminar la cadena correctamente
-        payload[receivedCount] = '\0';
-        
-        return true;
     }
+    return true;
 }
 
-bool receivepacket() {
+bool receivepacket() {    //Modificaremos esto para controlar la llegada de nuevos paquetes por variable booleana (cambiamos de void a bool) (agrega returns booleanos)
+    
+    printf("\n Entrando a funcion receivepacket() \n") //DEBUG
+    
+
     long int SNR;
     int rssicorr;
-    
     if(digitalRead(dio0) == 1) {
         if(receive(message)) {
             byte value = readReg(REG_PKT_SNR_VALUE);
@@ -331,6 +327,7 @@ bool receivepacket() {
             printf("Packet RSSI: %d, RSSI: %d, SNR: %li, Length: %i\n", readReg(0x1A)-rssicorr, readReg(0x1B)-rssicorr, SNR, (int)receivedbytes);
             printf("Payload: %s\n", message);
 
+            
             // Limpiamos IRQ para que dio0 vuelva a LOW
             writeReg(REG_IRQ_FLAGS, IRQ_LORA_RXDONE_MASK);
             // Preparamos receptor para siguiente paquete
@@ -339,13 +336,9 @@ bool receivepacket() {
             return true;
         }
         else{
-            // Si hay error, tambien limpiamos flags y reconfiguramos RX
-            writeReg(REG_IRQ_FLAGS, IRQ_LORA_RXDONE_MASK);
-            opmode(OPMODE_RX);
             return false;
         }
     }
-    return false;
 }
 
 /* CONFIGURAR POTENCIA */
@@ -418,43 +411,41 @@ int main (int argc, char *argv[]) {
         printf("Listening at SF%i on %.6lf Mhz.\n", sf,(double)freq/1000000);
         printf("------------------\n");
         while(1) {
-    if(receivepacket()){ 
-        // Buscar el ultimo campo (timestamp)
-        char* Ultima_coma = strrchr(message, ',');
-        
-        if(Ultima_coma != NULL && strlen(Ultima_coma) > 1){
-            char* endptr;
-            uint32_t current_timestamp = strtoul(Ultima_coma + 1, &endptr, 10);
-            
-            // Verificar que la conversion fue exitosa
-            if (endptr != Ultima_coma + 1 && *endptr == '\0') {
-                if(current_timestamp != Last_Time_Stamp){ 
-                    // Nuevo timestamp - enviar al servidor
-                    sendToMQTT(message);
-                    Last_Time_Stamp = current_timestamp;
-                    printf("Mensaje nuevo enviado. Timestamp: %lu\n", current_timestamp);
+            if(receivepacket()){ //Lo hacemos condicional para ver su valor booleano DEBEMOS PONER BIEN EL CAMPO
+                //Buscaremos el ultimo campo y asignaremos valor a la variable auxiliar, despues compararemos y se mandara solo si es distinto
+                //Usamos la funcion strrchr() para encontrar la ocurrencia del ultimo caracter dado (UBICAREMOS LA ULTIMA COMA ",")
+                char* Ultima_coma = strrchr(message, ',') 
+                //strrchr(message, ',')  Devuelve un puntero a la ultima coma, por lo que Ultima_coma + 1 es un puntero al primer bit del ultimo campo
+                if(Ultima_coma!=NULL){
+                    uint32_t current_timestamp = strtoul(Ultima_coma+ 1, NULL, 10); // Convertir un string (lo q esta despues de la coma) a un num entero sin signo
+                    //Si bien Ultima_coma apunta al primer caracter del numero, strtoul interpreta toda la secuencia de caracteres consecutivos como un 
+                    // numero completo, no solo el primer caracter. (Hasta que encuentra la siguiente coma)
+
+                    if(current_timestamp != Last_Time_Stamp){ //La fecha queda de 4 bytes
+                        //Se envia
+                        sendToMQTT(message);
+                        Last_Time_Stamp = current_timestamp;
+                        printf("Mensaje enviado.\n");
+
+
+                    }
+                    else{
+                        printf("Mensaje duplicado, no se envia.\n");
+                    }
                 }
+
                 else{
-                    printf("Mensaje duplicado, no se envia. Timestamp: %lu\n", current_timestamp);
+                    printf("Error: No se pudo parsear Timestamp")
                 }
+                    
+                
             }
-            else {
-                printf("Error: Timestamp invalido en mensaje: %s\n", Ultima_coma + 1);
-            }
+            delay(100);
         }
-        else{
-            printf("Error: No se pudo parsear Timestamp del mensaje: %s\n", message);
-        }
-        
-        // Pequena pausa para evitar procesamiento demasiado rapido
-        delay(10);
     }
-    else {
-        // Si no hay paquete, esperar un poco mas
-        delay(50);
-    }
+
+    return 0;
 }
 
-    }
-}
+
 //Recuerda: Tenemos que asignar el valor del actual timestamp a la variable auxiliar Last_Time_Stamp
