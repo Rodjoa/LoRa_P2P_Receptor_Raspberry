@@ -282,6 +282,7 @@ void sendToMQTT(char* payload) {
         printf("Reconnected to MQTT broker.\n");
     }
     MQTTClient_waitForCompletion(client, token, TIMEOUT);
+    printf("\n Antes de enviar Message sent... a funcion sentToMQTT()\n");
     printf("Message sent: %s\n", payload);
 }
 
