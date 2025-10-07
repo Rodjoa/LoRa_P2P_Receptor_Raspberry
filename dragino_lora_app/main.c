@@ -303,8 +303,15 @@ bool receive(char *payload) {
         byte receivedCount = readReg(REG_RX_NB_BYTES);
         receivedbytes = receivedCount;
         writeReg(REG_FIFO_ADDR_PTR, currentAddr);
+
+
         for(int i = 0; i < receivedCount; i++)
             payload[i] = (char)readReg(REG_FIFO);
+
+        // Terminar la cadena correctamente
+        payload[receivedCount] = '\0';
+
+
     }
     return true;
 }
