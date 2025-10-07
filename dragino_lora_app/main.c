@@ -30,9 +30,14 @@
 #define QOS         1
 #define TIMEOUT     10000L
 
-/* Variables globales */
+// =========Variables de conexion MQTT
 MQTTClient client;
 MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
+
+//=====Variable auxiliar para TIMESTAMP del dato
+uint32_t Last_Time_Stamp = 0; //Buffer de 1 dato para el ultimo timestamp recibido
+
+
 
 /* ################# CONFIGURACION DEL LORA ################# */
 #define REG_FIFO                    0x00
@@ -250,7 +255,7 @@ void setupMQTT() {
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
 
-    while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
+    while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {   //En mqttpaho MQTTCLIENT_SUCCESS  es 0 (funcion se ejecuta sin error) (MQTTClient.h)
         printf("Failed to connect, return code %d. Reconnecting in 5 seconds...\n", rc);
         delay(5);
     }
@@ -280,6 +285,13 @@ void sendToMQTT(char* payload) {
 
 /* ############ FUNCIONES DE RECEPCION ############ */
 bool receive(char *payload) {
+
+    /*
+    //Debugeo
+    printf("\n Entrando a funcion receive() \n")
+    printf(payload)
+    */
+
     writeReg(REG_IRQ_FLAGS, 0x40);
     int irqflags = readReg(REG_IRQ_FLAGS);
     if((irqflags & 0x20) == 0x20) {
@@ -298,6 +310,11 @@ bool receive(char *payload) {
 }
 
 bool receivepacket() {    //Modificaremos esto para controlar la llegada de nuevos paquetes por variable booleana (cambiamos de void a bool) (agrega returns booleanos)
+    /*
+    printf("\n Entrando a funcion receivepacket() \n")
+    printf()
+    */
+
     long int SNR;
     int rssicorr;
     if(digitalRead(dio0) == 1) {
@@ -315,7 +332,7 @@ bool receivepacket() {    //Modificaremos esto para controlar la llegada de nuev
             writeReg(REG_IRQ_FLAGS, IRQ_LORA_RXDONE_MASK);
             // Preparamos receptor para siguiente paquete
             opmode(OPMODE_RX);
-            
+
             return true;
         }
         else{
@@ -394,8 +411,34 @@ int main (int argc, char *argv[]) {
         printf("Listening at SF%i on %.6lf Mhz.\n", sf,(double)freq/1000000);
         printf("------------------\n");
         while(1) {
-            if(receivepacket()){ //Lo hacemos condicional para ver su valor booleano
-                sendToMQTT(message);
+            if(receivepacket()){ //Lo hacemos condicional para ver su valor booleano DEBEMOS PONER BIEN EL CAMPO
+                //Buscaremos el ultimo campo y asignaremos valor a la variable auxiliar, despues compararemos y se mandara solo si es distinto
+                //Usamos la funcion strrchr() para encontrar la ocurrencia del ultimo caracter dado (UBICAREMOS LA ULTIMA COMA ",")
+                char* Ultima_coma = strrchr(message, ',') 
+                //strrchr(message, ',')  Devuelve un puntero a la ultima coma, por lo que Ultima_coma + 1 es un puntero al primer bit del ultimo campo
+                if(Ultima_coma!=NULL){
+                    uint32_t current_timestamp = strtoul(Ultima_coma+ 1, NULL, 10); // Convertir un string (lo q esta despues de la coma) a un num entero sin signo
+                    //Si bien Ultima_coma apunta al primer caracter del numero, strtoul interpreta toda la secuencia de caracteres consecutivos como un 
+                    // numero completo, no solo el primer caracter. (Hasta que encuentra la siguiente coma)
+
+                    if(current_timestamp != Last_Time_Stamp){ //La fecha queda de 4 bytes
+                        //Se envia
+                        sendToMQTT(message);
+                        Last_Time_Stamp = current_timestamp;
+                        printf("Mensaje enviado.\n");
+
+
+                    }
+                    else{
+                        printf("Mensaje duplicado, no se envia.\n");
+                    }
+                }
+
+                else{
+                    printf("Error: No se pudo parsear Timestamp")
+                }
+                    
+                
             }
             delay(100);
         }
@@ -403,3 +446,6 @@ int main (int argc, char *argv[]) {
 
     return 0;
 }
+
+
+//Recuerda: Tenemos que asignar el valor del actual timestamp a la variable auxiliar Last_Time_Stamp
