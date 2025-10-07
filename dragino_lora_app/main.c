@@ -263,10 +263,6 @@ void setupMQTT() {
 }
 
 void sendToMQTT(char* payload) {
-    printf("Entrando a sendToMQTT\n");  // agrega \n
-    fflush(stdout);                     // fuerza impresion inmediata
-
-
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
     pubmsg.payload = payload;
@@ -290,10 +286,11 @@ void sendToMQTT(char* payload) {
 /* ############ FUNCIONES DE RECEPCION ############ */
 bool receive(char *payload) {
 
-    
+    /*
     //Debugeo
-    printf("\n Entrando a funcion receive() \n");
-    
+    printf("\n Entrando a funcion receive() \n")
+    printf(payload)
+    */
 
     writeReg(REG_IRQ_FLAGS, 0x40);
     int irqflags = readReg(REG_IRQ_FLAGS);
@@ -313,9 +310,10 @@ bool receive(char *payload) {
 }
 
 bool receivepacket() {    //Modificaremos esto para controlar la llegada de nuevos paquetes por variable booleana (cambiamos de void a bool) (agrega returns booleanos)
-    
-    printf("\n Entrando a funcion receivepacket() \n"); //DEBUG
-    
+    /*
+    printf("\n Entrando a funcion receivepacket() \n")
+    printf()
+    */
 
     long int SNR;
     int rssicorr;
@@ -411,12 +409,14 @@ int main (int argc, char *argv[]) {
         opmode(OPMODE_STANDBY);
         opmode(OPMODE_RX);
         printf("Listening at SF%i on %.6lf Mhz.\n", sf,(double)freq/1000000);
+        printf("debuggeando en else if not sender\n");
         printf("------------------\n");
         while(1) {
+            printf("Mensaje enviado.\n");
             if(receivepacket()){ //Lo hacemos condicional para ver su valor booleano DEBEMOS PONER BIEN EL CAMPO
                 //Buscaremos el ultimo campo y asignaremos valor a la variable auxiliar, despues compararemos y se mandara solo si es distinto
                 //Usamos la funcion strrchr() para encontrar la ocurrencia del ultimo caracter dado (UBICAREMOS LA ULTIMA COMA ",")
-                char* Ultima_coma = strrchr(message, ','); 
+                char* Ultima_coma = strrchr(message, ',') 
                 //strrchr(message, ',')  Devuelve un puntero a la ultima coma, por lo que Ultima_coma + 1 es un puntero al primer bit del ultimo campo
                 if(Ultima_coma!=NULL){
                     uint32_t current_timestamp = strtoul(Ultima_coma+ 1, NULL, 10); // Convertir un string (lo q esta despues de la coma) a un num entero sin signo
@@ -437,7 +437,7 @@ int main (int argc, char *argv[]) {
                 }
 
                 else{
-                    printf("Error: No se pudo parsear Timestamp");
+                    printf("Error: No se pudo parsear Timestamp")
                 }
                     
                 
