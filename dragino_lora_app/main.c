@@ -153,7 +153,7 @@ int ssPin = 6;
 int dio0  = 7;
 int RST   = 0;
 sf_t sf = SF7;
-uint32_t  freq = 868100000; 
+uint32_t  freq = 915E6; 
 byte hello[32] = "HELLO";
 
 /* ################# FUNCIONES ################# */
@@ -263,7 +263,7 @@ void setupMQTT() {
 }
 
 void sendToMQTT(char* payload) {
-    fprintf(stderr, "Entrando a funcion sendToMQTT()\n");
+    //fprintf(stderr, "Entrando a funcion sendToMQTT()\n");
 
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
@@ -282,7 +282,7 @@ void sendToMQTT(char* payload) {
         printf("Reconnected to MQTT broker.\n");
     }
     MQTTClient_waitForCompletion(client, token, TIMEOUT);
-    fprintf(stderr, "Antes de enviar por sendToMQTT()\n");
+    //fprintf(stderr, "Antes de enviar por sendToMQTT()\n");
     printf("Message sent: %s\n", payload);
 }
 
