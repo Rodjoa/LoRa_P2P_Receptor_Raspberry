@@ -1,17 +1,35 @@
-# dragino lora testing
-# Single lora testing app
+# Dragino LoRa App - Raspberry Pi
+# Compila en C++ y enlaza wiringPi y MQTT
 
-CC=g++
-CFLAGS=-c -Wall
-LIBS=-lwiringPi
+CC = g++
+CFLAGS = -c -Wall -std=c++11
+LIBS = -lwiringPi -lpaho-mqtt3c
 
-all: dragino_lora_app
+# Nombre del binario
+TARGET = dragino_lora_app
+SRC = main.cpp
+OBJ = main.o
 
-dragino_lora_app: main.o
-	$(CC) main.o  $(LIBS) -o dragino_lora_app
+# Regla por defecto
+all: $(TARGET)
 
-main.o: main.c
-	$(CC) $(CFLAGS) main.c
+# Compilar el binario
+$(TARGET): $(OBJ)
+	@echo "🔨 Linking $(TARGET)..."
+	$(CC) $(OBJ) $(LIBS) -o $(TARGET)
+	@echo "✅ $(TARGET) creado!"
 
+# Compilar objeto
+$(OBJ): $(SRC)
+	@echo "🔨 Compiling $(SRC)..."
+	$(CC) $(CFLAGS) $(SRC)
+
+# Limpiar archivos compilados
 clean:
-	rm *.o dragino_lora_app	
+	@echo "🧹 Limpiando archivos compilados..."
+	rm -f $(OBJ) $(TARGET)
+	@echo "✅ Limpieza completada!"
+
+# Fuerza recompilación completa
+rebuild: clean all
+
