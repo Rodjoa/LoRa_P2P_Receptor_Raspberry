@@ -24,18 +24,25 @@
 
 /* Agregadas por mi para el MQTT */
 #include "MQTTClient.h"
-#define ADDRESS     "tcp://test.mosquitto.org:1883"
+#define ADDRESS     "168.232.167.23"
 #define CLIENTID    "ProtoLoRa_pi3"
-#define TOPIC       "MQTT_Examples"
+#define TOPIC_1       "IoT/LoRa"
 #define QOS         1
 #define TIMEOUT     10000L
+
+//Credenciales topico 2
+#define TOPIC_2       "Rendimiento/LoRa"
+// Credenciales del broker privado
+#define USERNAME    "PMM_D14"
+#define PASSWORD    "PMM_D14#P4$$-T3st3r"
 
 // =========Variables de conexion MQTT
 MQTTClient client;
 MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
 
-//=====Variable auxiliar para TIMESTAMP del dato
+//=====Variables auxiliares para los datos
 uint32_t Last_Time_Stamp = 0; //Buffer de 1 dato para el ultimo timestamp recibido
+int rssi_lora;
 
 
 
@@ -254,6 +261,9 @@ void setupMQTT() {
     MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL);
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
+    //Agregamos las credenciales del broker 
+    conn_opts.username = USERNAME;
+    conn_opts.password = PASSWORD;
 
     while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {   //En mqttpaho MQTTCLIENT_SUCCESS  es 0 (funcion se ejecuta sin error) (MQTTClient.h)
         printf("Failed to connect, return code %d. Reconnecting in 5 seconds...\n", rc);
@@ -272,16 +282,54 @@ void sendToMQTT(char* payload) {
     pubmsg.qos = QOS;
     pubmsg.retained = 0;
 
+
+    //ACA DEBE IR EL CONDICIONAL DE TOPICO (ademas debe agregarse RSSI antes de enviarse)
+
     int rc;
-    while ((rc = MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
-        printf("Failed to publish message, return code %d. Trying to reconnect...\n", rc);
-        while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
-            printf("Reconnect failed, return code %d. Retrying in 5 seconds...\n", rc);
-            delay(5);
+    char primerbyte = payload[0]; // Primer caracter del payload (Identificador de topico)
+
+
+    //Recuerda: Los char usan comillas simples ''
+    if(primerbyte == 'I'){      // PROBLEMA:Aun no hemos definido variable primerbyte (debe ser el  primer byte de la payload y debe ser char o char*)
+        //Enviar con topic_1 a IoT
+        while ((rc = MQTTClient_publishMessage(client, TOPIC_1, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
+            printf("Failed to publish message, return code %d. Trying to reconnect...\n", rc);
+            while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
+                printf("Reconnect failed, return code %d. Retrying in 5 seconds...\n", rc);
+                delay(5);
+            }
+        printf("Reconnected to MQTT broker IoT.\n");
         }
-        printf("Reconnected to MQTT broker.\n");
+
     }
-    MQTTClient_waitForCompletion(client, token, TIMEOUT);
+
+    else if(primerbyte == 'R'){
+        //Concatenar RSSI AL FINAL (Hacer variable global y almacenar su valor en ReceivePackets() para concatenar aca)
+        //Enviar con topic_2 a Rendimiento
+        //PROBLEMA: pubmsg ES UN PUNTERO char* no un String. -> Debemos armar un String aparte y pasar el puntero de ese string
+        /*
+        String payloadWithRSSI = String(payload) + "," + String(rssi_lora);
+        pubmsg.payload = (char*) payloadWithRSSI.c_str();
+        pubmsg.payloadlen = payloadWithRSSI.length();
+        */
+        char payloadWithRSSI[100]; // buffer suficientemente grande
+        snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d", payload, rssi_lora); //Escribe en el buffer payloadwith.. tamano maximo de sizeof..., el formato de cadena "%s,%d" (s es pay y d es rssi)
+        pubmsg.payload = payloadWithRSSI;
+        pubmsg.payloadlen = strlen(payloadWithRSSI);
+
+
+        while ((rc = MQTTClient_publishMessage(client, TOPIC_2, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
+            printf("Failed to publish message, return code %d. Trying to reconnect...\n", rc);
+            while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
+                printf("Reconnect failed, return code %d. Retrying in 5 seconds...\n", rc);
+                delay(5);
+            }
+        printf("Reconnected to MQTT broker Rendimiento.\n");
+        }
+    }
+
+    
+    MQTTClient_waitForCompletion(client, token, TIMEOUT); // Espera que la publicacion previa se complete, es decir, que el broker confirme la recepcion del mensaje (dependiendo del QoS)
     //fprintf(stderr, "Antes de enviar por sendToMQTT()\n");
     printf("Message sent: %s\n", payload);
 }
@@ -329,6 +377,9 @@ bool receivepacket() {    //Modificaremos esto para controlar la llegada de nuev
             rssicorr = sx1272 ? 139 : 157;
             printf("Packet RSSI: %d, RSSI: %d, SNR: %li, Length: %i\n", readReg(0x1A)-rssicorr, readReg(0x1B)-rssicorr, SNR, (int)receivedbytes);
             printf("Payload: %s\n", message);
+            int rssiReal = readReg(0x1A) - rssicorr;   //Este es el RSSI corregido (el mismo que se printea primero)
+            rssi_lora = rssiReal;
+
 
             
             // Limpiamos IRQ para que dio0 vuelva a LOW
