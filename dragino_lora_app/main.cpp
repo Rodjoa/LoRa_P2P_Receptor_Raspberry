@@ -290,7 +290,7 @@ void sendToMQTT(char* payload) {
     for (size_t i = 0; i < strlen(localPayload); i++) {
         if (localPayload[i] == '\r' || localPayload[i] == '\n' || localPayload[i] == '\0') {
             localPayload[i] = '\0';
-            break; // Cortar en el primer carácter no deseado
+            break; // Cortar en el primer caracter no deseado
         }
     }
 
@@ -339,7 +339,7 @@ void sendToMQTT(char* payload) {
     
     MQTTClient_waitForCompletion(client, token, TIMEOUT);
     
-    // DEBUG: Verificar qué se está enviando
+    // DEBUG: Verificar que se esta enviando
     printf("Enviado - Tipo: %c, Payload: %s\n", primerbyte, 
            primerbyte == 'R' ? payloadWithRSSI : localPayload);
 }
@@ -490,11 +490,11 @@ int main (int argc, char *argv[]) {
         uint32_t current_timestamp = 0;
         uint32_t packet_id = 0;
 
-        // Parsear según tipo con mejor manejo de errores
+        // Parsear segun tipo con mejor manejo de errores
         char *token = strtok(temp, ",");
         
         if (token == NULL) {
-            printf("Mensaje vacío o mal formado\n");
+            printf("Mensaje vacio o mal formado\n");
             continue;
         }
 
@@ -545,11 +545,11 @@ int main (int argc, char *argv[]) {
             sendToMQTT(message);
         }
         
-        // Limpiar el buffer message para el próximo ciclo
+        // Limpiar el buffer message para el proximo ciclo
         memset(message, 0, sizeof(message));
     }
     delay(100);
 }
-
-
+}
+}
 //Recuerda: Tenemos que asignar el valor del actual timestamp a la variable auxiliar Last_Time_Stamp
