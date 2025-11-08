@@ -346,11 +346,16 @@ void sendToMQTT(char* payload) {
     else {
         printf("Topico desconocido\n");
     }
-
     
     MQTTClient_waitForCompletion(client, token, TIMEOUT); // Espera que la publicacion previa se complete, es decir, que el broker confirme la recepcion del mensaje (dependiendo del QoS)
     //fprintf(stderr, "Antes de enviar por sendToMQTT()\n");
     printf("Message sent: %s\n", payloadWithRSSI);
+
+    // Limpiar buffer para el próximo mensaje
+    payloadWithRSSI[0] = '\0';
+    payload[0] = '\0';
+
+
 }
 
 /* ############ FUNCIONES DE RECEPCION ############ */
