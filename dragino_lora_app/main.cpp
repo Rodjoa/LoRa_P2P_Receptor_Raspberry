@@ -163,6 +163,14 @@ sf_t sf = SF7;
 uint32_t  freq = 915E6; 
 byte hello[32] = "HELLO";
 
+
+//Variables para evitar duplicados y enrutar al broker respectivo
+uint32_t Last_Time_Stamp_R = 0;
+uint32_t Last_Time_Stamp_I = 0;
+
+
+
+
 /* ################# FUNCIONES ################# */
 
 void die(const char *s) {
@@ -476,38 +484,64 @@ int main (int argc, char *argv[]) {
         fflush(stdout);
         printf("------------------\n");
         while(1) {
-            printf("Mensaje enviado.\n");
-            if(receivepacket()){ //Lo hacemos condicional para ver su valor booleano DEBEMOS PONER BIEN EL CAMPO
-                //Buscaremos el ultimo campo y asignaremos valor a la variable auxiliar, despues compararemos y se mandara solo si es distinto
-                //Usamos la funcion strrchr() para encontrar la ocurrencia del ultimo caracter dado (UBICAREMOS LA ULTIMA COMA ",")
-                char* Ultima_coma = strrchr(message, ','); 
-                //strrchr(message, ',')  Devuelve un puntero a la ultima coma, por lo que Ultima_coma + 1 es un puntero al primer bit del ultimo campo
-                if(Ultima_coma!=NULL){
-                    uint32_t current_timestamp = strtoul(Ultima_coma+ 1, NULL, 10); // Convertir un string (lo q esta despues de la coma) a un num entero sin signo
-                    //Si bien Ultima_coma apunta al primer caracter del numero, strtoul interpreta toda la secuencia de caracteres consecutivos como un 
-                    // numero completo, no solo el primer caracter. (Hasta que encuentra la siguiente coma)
 
-                    if(current_timestamp != Last_Time_Stamp){ //La fecha queda de 4 bytes
-                        //Se envia
-                        sendToMQTT(message);
-                        Last_Time_Stamp = current_timestamp;
-                        printf("Mensaje enviado.\n");
+    if (receivepacket()) {
+        char tipo = message[0];  // 'R' o 'I'
+        uint32_t current_timestamp = 0;
 
+        // Copiamos el mensaje porque strtok lo modifica
+        char temp[128];
+        strncpy(temp, message, sizeof(temp));
+        temp[sizeof(temp) - 1] = '\0';
 
-                    }
-                    else{
-                        printf("Mensaje duplicado, no se envia.\n");
-                    }
-                }
+        // Parsear según tipo
+        char *token = strtok(temp, ","); // primer campo (tipo)
 
-                else{
-                    printf("Error: No se pudo parsear Timestamp");
-                }
-                    
-                
-            }
-            delay(100);
+        if (tipo == 'I') {
+            token = strtok(NULL, ","); // segundo campo (id)
+            token = strtok(NULL, ","); // tercer campo (timestamp)
+            if (token != NULL)
+                current_timestamp = strtoul(token, NULL, 10);
+        } 
+        else if (tipo == 'R') {
+            token = strtok(NULL, ","); // segundo campo (timestamp)
+            if (token != NULL)
+                current_timestamp = strtoul(token, NULL, 10);
+        } 
+        else {
+            printf("Tipo de mensaje desconocido: %c\n", tipo);
+            continue; // saltamos este ciclo
         }
+
+        // Evitar duplicados
+        uint8_t enviar = 0;
+        if (tipo == 'I') {
+            if (current_timestamp != Last_Time_Stamp_I) {
+                enviar = 1;
+                Last_Time_Stamp_I = current_timestamp;
+            } else {
+                printf("Mensaje I duplicado, no se envia.\n");
+            }
+        } 
+        else if (tipo == 'R') {
+            if (current_timestamp != Last_Time_Stamp_R) {
+                enviar = 1;
+                Last_Time_Stamp_R = current_timestamp;
+            } else {
+                printf("Mensaje R duplicado, no se envia.\n");
+            }
+        }
+
+        // Enviar si corresponde
+        if (enviar) {
+            sendToMQTT(message);
+            printf("Mensaje %c enviado.\n", tipo);
+        }
+    }
+
+    delay(100);
+}
+
     }
 
     return 0;
