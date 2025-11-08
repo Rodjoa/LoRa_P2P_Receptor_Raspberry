@@ -150,7 +150,7 @@ typedef unsigned char byte;
 
 static const int CHANNEL = 0;
 
-char message[50];  
+char message[128];  //Lo aumentamos de 50 a 128
 bool sx1272 = true;
 byte receivedbytes;
 
