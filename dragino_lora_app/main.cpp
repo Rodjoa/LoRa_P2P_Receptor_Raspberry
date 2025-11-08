@@ -295,7 +295,8 @@ void sendToMQTT(char* payload) {
 
     int rc;
     char primerbyte = payload[0]; // Primer caracter del payload (Identificador de topico)
-    printf("\n primerbyte = %c\n", primerbyte);
+    char payloadWithRSSI[100]; // buffer suficientemente grande
+    //printf("\n primerbyte = %c\n", primerbyte);
 
 
 
@@ -322,13 +323,12 @@ void sendToMQTT(char* payload) {
         pubmsg.payload = (char*) payloadWithRSSI.c_str();
         pubmsg.payloadlen = payloadWithRSSI.length();
         */
-        char payloadWithRSSI[100]; // buffer suficientemente grande
-        for (int i = 0; i < strlen(payload); i++) {
-            if (payload[i] == '\r' || payload[i] == '\n') {
-                payload[i] = '\0';
-                break;
-            }
+        
+        for (size_t i = 0; i < strlen(payload); i++) { //Limpiar caracteres residuales en los campos de la payload
+            if (payload[i] == '\r' || payload[i] == '\n')
+                payload[i] = '\0';  // corta el string donde hay salto de linea
         }
+
 
         snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d", payload, rssi_lora); //Escribe en el buffer payloadwith.. tamano maximo de sizeof..., el formato de cadena "%s,%d" (s es pay y d es rssi)
         pubmsg.payload = payloadWithRSSI;
