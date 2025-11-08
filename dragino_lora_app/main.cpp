@@ -281,58 +281,47 @@ void setupMQTT() {
 }
 
 void sendToMQTT(char* payload) {
-    //fprintf(stderr, "Entrando a funcion sendToMQTT()\n");
+    // Hacer una copia local del payload para no modificar el original
+    char localPayload[128];
+    strncpy(localPayload, payload, sizeof(localPayload) - 1);
+    localPayload[sizeof(localPayload) - 1] = '\0';
+    
+    // Limpiar caracteres no deseados
+    for (size_t i = 0; i < strlen(localPayload); i++) {
+        if (localPayload[i] == '\r' || localPayload[i] == '\n' || localPayload[i] == '\0') {
+            localPayload[i] = '\0';
+            break; // Cortar en el primer carácter no deseado
+        }
+    }
 
     MQTTClient_message pubmsg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
-    pubmsg.payload = payload;
-    pubmsg.payloadlen = (int)strlen(payload);
-    pubmsg.qos = QOS;
-    pubmsg.retained = 0;
-
-
-    //ACA DEBE IR EL CONDICIONAL DE TOPICO (ademas debe agregarse RSSI antes de enviarse)
-
     int rc;
-    char primerbyte = payload[0]; // Primer caracter del payload (Identificador de topico)
-    //char payloadWithRSSI[100]; // Ya lo declaramos como variable global;
+    char primerbyte = localPayload[0];
 
-
-
-    //Recuerda: Los char usan comillas simples ''
-    if(primerbyte == 'I'){      // PROBLEMA:Aun no hemos definido variable primerbyte (debe ser el  primer byte de la payload y debe ser char o char*)
-        //Enviar con topic_1 a IoT
+    if(primerbyte == 'I'){      
+        pubmsg.payload = localPayload;
+        pubmsg.payloadlen = (int)strlen(localPayload);
+        pubmsg.qos = QOS;
+        pubmsg.retained = 0;
+        
         while ((rc = MQTTClient_publishMessage(client, TOPIC_1, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
             printf("Failed to publish message, return code %d. Trying to reconnect...\n", rc);
             while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
                 printf("Reconnect failed, return code %d. Retrying in 5 seconds...\n", rc);
                 delay(5);
             }
-        printf("Reconnected to MQTT broker IoT.\n");
+            printf("Reconnected to MQTT broker IoT.\n");
         }
-
     }
-
     else if(primerbyte == 'R'){
-        //Concatenar RSSI AL FINAL (Hacer variable global y almacenar su valor en ReceivePackets() para concatenar aca)
-        //Enviar con topic_2 a Rendimiento
-        //PROBLEMA: pubmsg ES UN PUNTERO char* no un String. -> Debemos armar un String aparte y pasar el puntero de ese string
-        /*
-        String payloadWithRSSI = String(payload) + "," + String(rssi_lora);
-        pubmsg.payload = (char*) payloadWithRSSI.c_str();
-        pubmsg.payloadlen = payloadWithRSSI.length();
-        */
+        // Usar snprintf para evitar desbordamientos
+        snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d", localPayload, rssi_lora);
         
-        for (size_t i = 0; i < strlen(payload); i++) { //Limpiar caracteres residuales en los campos de la payload
-            if (payload[i] == '\r' || payload[i] == '\n')
-                payload[i] = '\0';  // corta el string donde hay salto de linea
-        }
-
-
-        snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d", payload, rssi_lora); //Escribe en el buffer payloadwith.. tamano maximo de sizeof..., el formato de cadena "%s,%d" (s es pay y d es rssi)
         pubmsg.payload = payloadWithRSSI;
-        pubmsg.payloadlen = strlen(payloadWithRSSI);
-
+        pubmsg.payloadlen = (int)strlen(payloadWithRSSI);
+        pubmsg.qos = QOS;
+        pubmsg.retained = 0;
 
         while ((rc = MQTTClient_publishMessage(client, TOPIC_2, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
             printf("Failed to publish message, return code %d. Trying to reconnect...\n", rc);
@@ -340,22 +329,19 @@ void sendToMQTT(char* payload) {
                 printf("Reconnect failed, return code %d. Retrying in 5 seconds...\n", rc);
                 delay(5);
             }
-        printf("Reconnected to MQTT broker Rendimiento.\n");
+            printf("Reconnected to MQTT broker Rendimiento.\n");
         }
     }
     else {
-        printf("Topico desconocido\n");
+        printf("Topico desconocido: %c\n", primerbyte);
+        return;
     }
     
-    MQTTClient_waitForCompletion(client, token, TIMEOUT); // Espera que la publicacion previa se complete, es decir, que el broker confirme la recepcion del mensaje (dependiendo del QoS)
-    //fprintf(stderr, "Antes de enviar por sendToMQTT()\n");
-    //printf("Topico R: %s\n", payloadWithRSSI);
-
-    // Limpiar buffer para el proximo mensaje
-    payloadWithRSSI[0] = '\0';
-    payload[0] = '\0';
-
-
+    MQTTClient_waitForCompletion(client, token, TIMEOUT);
+    
+    // DEBUG: Verificar qué se está enviando
+    printf("Enviado - Tipo: %c, Payload: %s\n", primerbyte, 
+           primerbyte == 'R' ? payloadWithRSSI : localPayload);
 }
 
 /* ############ FUNCIONES DE RECEPCION ############ */
@@ -495,35 +481,42 @@ int main (int argc, char *argv[]) {
         fflush(stdout);
         printf("------------------\n");
         while(1) {
-
     if (receivepacket()) {
-
-
-        char tipo = message[0];  // 'R' o 'I'
+        // Limpiar el buffer temporal completamente
+        char temp[128] = {0};
+        strncpy(temp, message, sizeof(temp) - 1);
+        
+        char tipo = temp[0];
         uint32_t current_timestamp = 0;
+        uint32_t packet_id = 0;
 
-        // Copiamos el mensaje porque strtok lo modifica
-        char temp[128];
-        strncpy(temp, message, sizeof(temp));
-        temp[sizeof(temp) - 1] = '\0';
-
-        // Parsear segun tipo
-        char *token = strtok(temp, ","); // primer campo (tipo)
+        // Parsear según tipo con mejor manejo de errores
+        char *token = strtok(temp, ",");
+        
+        if (token == NULL) {
+            printf("Mensaje vacío o mal formado\n");
+            continue;
+        }
 
         if (tipo == 'I') {
-            token = strtok(NULL, ","); // segundo campo (id)
-            token = strtok(NULL, ","); // tercer campo (timestamp)
-            if (token != NULL)
+            token = strtok(NULL, ","); // packet_id
+            if (token != NULL) {
+                packet_id = strtoul(token, NULL, 10);
+            }
+            token = strtok(NULL, ","); // timestamp
+            if (token != NULL) {
                 current_timestamp = strtoul(token, NULL, 10);
+            }
         } 
         else if (tipo == 'R') {
-            token = strtok(NULL, ","); // segundo campo (timestamp)
-            if (token != NULL)
+            token = strtok(NULL, ","); // timestamp
+            if (token != NULL) {
                 current_timestamp = strtoul(token, NULL, 10);
+            }
         } 
         else {
             printf("Tipo de mensaje desconocido: %c\n", tipo);
-            continue; // saltamos este ciclo
+            continue;
         }
 
         // Evitar duplicados
@@ -532,34 +525,30 @@ int main (int argc, char *argv[]) {
             if (current_timestamp != Last_Time_Stamp_I) {
                 enviar = 1;
                 Last_Time_Stamp_I = current_timestamp;
+                printf("Nuevo mensaje I - ID: %lu, TS: %lu\n", packet_id, current_timestamp);
             } else {
-                printf("Mensaje I duplicado, no se envia.\n");
+                printf("Mensaje I duplicado - ID: %lu, TS: %lu\n", packet_id, current_timestamp);
             }
         } 
         else if (tipo == 'R') {
             if (current_timestamp != Last_Time_Stamp_R) {
                 enviar = 1;
                 Last_Time_Stamp_R = current_timestamp;
+                printf("Nuevo mensaje R - TS: %lu\n", current_timestamp);
             } else {
-                printf("Mensaje R duplicado, no se envia.\n");
+                printf("Mensaje R duplicado - TS: %lu\n", current_timestamp);
             }
         }
 
         // Enviar si corresponde
         if (enviar) {
             sendToMQTT(message);
-            printf("Mensaje \"%s\" recibido.\n", message);
-
-            printf("Mensaje %c enviado.\n", tipo);
         }
+        
+        // Limpiar el buffer message para el próximo ciclo
+        memset(message, 0, sizeof(message));
     }
-
     delay(100);
-}
-
-    }
-
-    return 0;
 }
 
 
