@@ -43,7 +43,7 @@ MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
 //=====Variables auxiliares para los datos
 uint32_t Last_Time_Stamp = 0; //Buffer de 1 dato para el ultimo timestamp recibido
 int rssi_lora;
-
+char payloadWithRSSI[128];  // Buffer global para concatenar el RSSI
 
 
 /* ################# CONFIGURACION DEL LORA ################# */
@@ -295,8 +295,7 @@ void sendToMQTT(char* payload) {
 
     int rc;
     char primerbyte = payload[0]; // Primer caracter del payload (Identificador de topico)
-    char payloadWithRSSI[100]; // buffer suficientemente grande
-    //printf("\n primerbyte = %c\n", primerbyte);
+    //char payloadWithRSSI[100]; // Ya lo declaramos como variable global;
 
 
 
@@ -493,6 +492,8 @@ int main (int argc, char *argv[]) {
         while(1) {
 
     if (receivepacket()) {
+
+
         char tipo = message[0];  // 'R' o 'I'
         uint32_t current_timestamp = 0;
 
@@ -501,7 +502,7 @@ int main (int argc, char *argv[]) {
         strncpy(temp, message, sizeof(temp));
         temp[sizeof(temp) - 1] = '\0';
 
-        // Parsear según tipo
+        // Parsear segun tipo
         char *token = strtok(temp, ","); // primer campo (tipo)
 
         if (tipo == 'I') {
