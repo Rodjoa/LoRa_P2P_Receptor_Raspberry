@@ -548,7 +548,7 @@ int main (int argc, char *argv[]) {
         // Enviar si corresponde
         if (enviar) {
             sendToMQTT(message);
-            printf("Mensaje %c recibido.\n", message);
+            printf("Mensaje %s recibido.\n", message);
             printf("Mensaje %c enviado.\n", tipo);
         }
     }
