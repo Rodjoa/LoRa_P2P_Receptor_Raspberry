@@ -287,7 +287,8 @@ void sendToMQTT(char* payload) {
 
     int rc;
     char primerbyte = payload[0]; // Primer caracter del payload (Identificador de topico)
-    printf("\n primerbyte = ", primerbyte);
+    printf("\n primerbyte = %c\n", primerbyte);
+
 
 
     //Recuerda: Los char usan comillas simples ''
@@ -383,7 +384,8 @@ bool receivepacket() {    //Modificaremos esto para controlar la llegada de nuev
             printf("Payload: %s\n", message);
             int rssiReal = readReg(0x1A) - rssicorr;   //Este es el RSSI corregido (el mismo que se printea primero)
             rssi_lora = rssiReal;
-            printf("Aca imprimimos el rssi que sacamos: \n", rssi_lora);
+            printf("Aca imprimimos el rssi que sacamos: %d\n", rssi_lora);
+
             
             
             // Limpiamos IRQ para que dio0 vuelva a LOW
