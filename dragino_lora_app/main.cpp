@@ -323,6 +323,13 @@ void sendToMQTT(char* payload) {
         pubmsg.payloadlen = payloadWithRSSI.length();
         */
         char payloadWithRSSI[100]; // buffer suficientemente grande
+        for (int i = 0; i < strlen(payload); i++) {
+            if (payload[i] == '\r' || payload[i] == '\n') {
+                payload[i] = '\0';
+                break;
+            }
+        }
+
         snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d", payload, rssi_lora); //Escribe en el buffer payloadwith.. tamano maximo de sizeof..., el formato de cadena "%s,%d" (s es pay y d es rssi)
         pubmsg.payload = payloadWithRSSI;
         pubmsg.payloadlen = strlen(payloadWithRSSI);
@@ -344,7 +351,7 @@ void sendToMQTT(char* payload) {
     
     MQTTClient_waitForCompletion(client, token, TIMEOUT); // Espera que la publicacion previa se complete, es decir, que el broker confirme la recepcion del mensaje (dependiendo del QoS)
     //fprintf(stderr, "Antes de enviar por sendToMQTT()\n");
-    printf("Message sent: %s\n", payload);
+    printf("Message sent: %s\n", payloadWithRSSI);
 }
 
 /* ############ FUNCIONES DE RECEPCION ############ */
