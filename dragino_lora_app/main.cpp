@@ -319,13 +319,7 @@ void sendToMQTT(char* payload) {
         //Formato field1=valor&field2=valor
         //Partir printeando (debugeando) la payload
 
-        while (!localPayload.empty() && localPayload[0] != ',') {
-            localPayload.erase(0, 1); // Removes 1 character starting at index 0 (the space)
-            }
-        if(!localPayload.empty()){
-            localPayload.erase(0, 1); // Removes 1 character starting at index 0 (the space)
-        }
-
+        
         pubmsg.payload = localPayload;
         pubmsg.payloadlen = (int)strlen(localPayload);
         pubmsg.qos = QOS;
@@ -365,12 +359,6 @@ void sendToMQTT(char* payload) {
         //Formato field1=valor&field2=valor
         //Partir printeando debugeando la payload
 
-        while (!payloadWithRSSI.empty() && payloadWithRSSI[0] != ',') {
-            payloadWithRSSI.erase(0, 1); // Removes 1 character starting at index 0 (the space)
-            }
-        if(!payloadWithRSSI.empty()){
-            payloadWithRSSI.erase(0, 1); // Removes 1 character starting at index 0 (the space)
-        }
 
         pubmsg.payload = payloadWithRSSI;
         pubmsg.payloadlen = (int)strlen(payloadWithRSSI);
