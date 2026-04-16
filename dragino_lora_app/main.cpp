@@ -5,8 +5,10 @@
  * http://www.dragino.com
  *
  *******************************************************************************/
+//Rama: Version Mosquitto_Test
 
-#include <string.h>
+
+#include <string.h> //Ver si se usa esto o se hace con char y punteros
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -22,19 +24,32 @@
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
 
-/* Agregadas por mi para el MQTT */
+
+
+
+
+
+//Dejar listas credenciales para los 2 canales de Thingspeak (MQTT, pero sino se puede http)
 #include "MQTTClient.h"
-#define ADDRESS     "168.232.167.23"
+#define ADDRESS     "tcp://test.mosquitto.org:1883"
+#define PORT 1883 // Agregada al final
+//#define ADDRESS "tcp://mqtt3.thingspeak.com:1883" //Probar
+
+//Credenciales Raspberry en canales de Thingspeak
+
+//#define CLIENTID    "channels/<3334965>/publish/<IKMHZF0NZRKRJ9OC>"
 #define CLIENTID    "ProtoLoRa_pi3"
-#define TOPIC_1       "IoT/LoRa"
+#define TOPIC_1       "MQTT_Examples_IoT"
 #define QOS         1
 #define TIMEOUT     10000L
 
 //Credenciales topico 2
-#define TOPIC_2       "Rendimiento/LoRa"
+#define TOPIC_2      "MQTT_Examples_Rendimiento"
 // Credenciales del broker privado
-#define USERNAME    "PMM_D14"
-#define PASSWORD    "PMM_D14#P4$$-T3st3r"
+//#define USERNAME    "CiYhCR0hKxUnBDsrJyo3DBg"
+//#define PASSWORD    "/N8WIkOLztoqOY40P5y4oJYm"
+
+
 
 // =========Variables de conexion MQTT
 MQTTClient client;
@@ -270,8 +285,8 @@ void setupMQTT() {
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
     //Agregamos las credenciales del broker 
-    conn_opts.username = USERNAME;
-    conn_opts.password = PASSWORD;
+    //conn_opts.username = USERNAME; //Los comentamos porque estamos con broker publico mosquitto
+    //conn_opts.password = PASSWORD;
 
     while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {   //En mqttpaho MQTTCLIENT_SUCCESS  es 0 (funcion se ejecuta sin error) (MQTTClient.h)
         printf("Failed to connect, return code %d. Reconnecting in 5 seconds...\n", rc);
@@ -300,34 +315,75 @@ void sendToMQTT(char* payload) {
     char primerbyte = localPayload[0];
 
     if(primerbyte == 'I'){      
+        //AQUI ARRIBA QUITAR PRIMER BYTE Y COMA (EL I de IDENTIFICADOR DE TOPICO)
+        //Formato field1=valor&field2=valor
+        //Partir printeando (debugeando) la payload
+
+        while (!localPayload.empty() && localPayload[0] != ',') {
+            localPayload.erase(0, 1); // Removes 1 character starting at index 0 (the space)
+            }
+        if(!localPayload.empty()){
+            localPayload.erase(0, 1); // Removes 1 character starting at index 0 (the space)
+        }
+
         pubmsg.payload = localPayload;
         pubmsg.payloadlen = (int)strlen(localPayload);
         pubmsg.qos = QOS;
         pubmsg.retained = 0;
+
+
+        /*
+        void enviarCanal1(float temperatura, float humedad) {
+            char payload[100];
+            sprintf(payload, "field1=%.2f&field2=%.2f", temperatura, humedad);
+            client.publish(TOPIC_1, payload, QOS, false);
+        }
+        void enviarCanal2(float rssi, float snr) {
+            char payload[100];
+            sprintf(payload, "field1=%.2f&field2=%.2f", rssi, snr);
+            client.publish(TOPIC_2, payload, QOS, false);
+        }
+        
+        */
+
+        
         
         while ((rc = MQTTClient_publishMessage(client, TOPIC_1, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
             printf("Failed to publish message, return code %d. Trying to reconnect...\n", rc);
             while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
                 printf("Reconnect failed, return code %d. Retrying in 5 seconds...\n", rc);
-                delay(5);
+                delay(500);
             }
             printf("Reconnected to MQTT broker IoT.\n");
         }
     }
     else if(primerbyte == 'R'){
-        // Usar snprintf para evitar desbordamientos
+        // Usar snprintf para evitar desbordamientos. Combina localpayload y rssi_lora y
+        //guarda el resultado en payloadWithRSSI
         snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d", localPayload, rssi_lora);
-        
+        //AQUI ARRIBA QUITAR PRIMER BYTE Y COMA (EL R de IDENTIFICADOR DE TOPICO)
+        //Formato field1=valor&field2=valor
+        //Partir printeando debugeando la payload
+
+        while (!payloadWithRSSI.empty() && payloadWithRSSI[0] != ',') {
+            payloadWithRSSI.erase(0, 1); // Removes 1 character starting at index 0 (the space)
+            }
+        if(!payloadWithRSSI.empty()){
+            payloadWithRSSI.erase(0, 1); // Removes 1 character starting at index 0 (the space)
+        }
+
         pubmsg.payload = payloadWithRSSI;
         pubmsg.payloadlen = (int)strlen(payloadWithRSSI);
         pubmsg.qos = QOS;
         pubmsg.retained = 0;
 
+        
+
         while ((rc = MQTTClient_publishMessage(client, TOPIC_2, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
             printf("Failed to publish message, return code %d. Trying to reconnect...\n", rc);
             while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
                 printf("Reconnect failed, return code %d. Retrying in 5 seconds...\n", rc);
-                delay(5);
+                delay(500);
             }
             printf("Reconnected to MQTT broker Rendimiento.\n");
         }
