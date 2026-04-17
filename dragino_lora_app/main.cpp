@@ -408,10 +408,12 @@ bool receive(char *payload) {
         byte receivedCount = readReg(REG_RX_NB_BYTES);
         receivedbytes = receivedCount;
         writeReg(REG_FIFO_ADDR_PTR, currentAddr);
-        for(int i = 0; i < receivedCount; i++) //VER QUITAR ESTE FOR
+        for(int i = 0; i < receivedCount; i++){ //VER QUITAR ESTE FOR
             payload[i] = (char)readReg(REG_FIFO);
+        }
+        payload[receivedCount] = '\0'; //dejamos ultimo bit '\0' para marcar el fin
     }
-    payload[receivedCount] = '\0' //dejamos ultimo bit '\0' para marcar el fin
+    
 
     return true;
 }
