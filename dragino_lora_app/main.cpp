@@ -549,13 +549,13 @@ int main (int argc, char *argv[]) {
             }
             token = strtok(NULL, ","); // timestamp
             if (token != NULL) {
-                current_timestamp = strtoul(token, NULL, 10);
+                current_timestamp = strtoull(token, NULL, 10);
             }
         } 
         else if (tipo == 'R') {
             token = strtok(NULL, ","); // timestamp
             if (token != NULL) {
-                current_timestamp = strtoul(token, NULL, 10);
+                current_timestamp = strtoull(token, NULL, 10);
             }
         } 
         else {
