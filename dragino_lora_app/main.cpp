@@ -56,7 +56,7 @@ MQTTClient client;
 MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
 
 //=====Variables auxiliares para los datos
-uint32_t Last_Time_Stamp = 0; //Buffer de 1 dato para el ultimo timestamp recibido
+uint64_t Last_Time_Stamp = 0; //Buffer de 1 dato para el ultimo timestamp recibido
 int rssi_lora;
 char payloadWithRSSI[128];  // Buffer global para concatenar el RSSI
 
@@ -180,8 +180,8 @@ byte hello[32] = "HELLO";
 
 
 //Variables para evitar duplicados y enrutar al broker respectivo
-uint32_t Last_Time_Stamp_R = 0;
-uint32_t Last_Time_Stamp_I = 0;
+uint64_t Last_Time_Stamp_R = 0;
+uint64_t Last_Time_Stamp_I = 0;
 
 
 
@@ -352,7 +352,7 @@ void sendToMQTT(char* payload) {
         }
     }
     else if(primerbyte == 'R'){
-        // Usar snprintf para evitar desbordamientos. Combina localpayload y rssi_lora y
+        // Usar snprintf para evitar desbordamientos. Combina localpayload y rssi_lora yit b
         //guarda el resultado en payloadWithRSSI
         snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d", localPayload, rssi_lora);
         //AQUI ARRIBA QUITAR PRIMER BYTE Y COMA (EL R de IDENTIFICADOR DE TOPICO)
@@ -531,7 +531,7 @@ int main (int argc, char *argv[]) {
         strncpy(temp, message, sizeof(temp) - 1);
         
         char tipo = temp[0];
-        uint32_t current_timestamp = 0;
+        uint64_t current_timestamp = 0;
         uint32_t packet_id = 0;
 
         // Parsear segun tipo con mejor manejo de errores
