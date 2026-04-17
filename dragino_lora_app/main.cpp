@@ -569,18 +569,19 @@ int main (int argc, char *argv[]) {
             if (current_timestamp != Last_Time_Stamp_I) {
                 enviar = 1;
                 Last_Time_Stamp_I = current_timestamp;
-                printf("Nuevo mensaje I - ID: %lu, TS: %lu\n", packet_id, current_timestamp);
+                //lu: unsigned long (32 bits) - llu: long long unsigned -> 64bits
+                printf("Nuevo mensaje I - ID: %lu, TS: %llu\n", packet_id, current_timestamp);
             } else {
-                printf("Mensaje I duplicado - ID: %lu, TS: %lu\n", packet_id, current_timestamp);
+                printf("Mensaje I duplicado - ID: %lu, TS: %llu\n", packet_id, current_timestamp);
             }
         } 
         else if (tipo == 'R') {
             if (current_timestamp != Last_Time_Stamp_R) {
                 enviar = 1;
                 Last_Time_Stamp_R = current_timestamp;
-                printf("Nuevo mensaje R - TS: %lu\n", current_timestamp);
+                printf("Nuevo mensaje R - TS: %llu\n", current_timestamp);
             } else {
-                printf("Mensaje R duplicado - TS: %lu\n", current_timestamp);
+                printf("Mensaje R duplicado - TS: %llu\n", current_timestamp);
             }
         }
 
