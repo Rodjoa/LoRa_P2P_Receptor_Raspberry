@@ -411,6 +411,8 @@ bool receive(char *payload) {
         for(int i = 0; i < receivedCount; i++) //VER QUITAR ESTE FOR
             payload[i] = (char)readReg(REG_FIFO);
     }
+    payload[receivedCount] = '\0' //dejamos ultimo bit '\0' para marcar el fin
+
     return true;
 }
 
