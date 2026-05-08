@@ -367,7 +367,11 @@ bool receive(char *payload) {
         writeReg(REG_FIFO_ADDR_PTR, currentAddr);
         for(int i = 0; i < receivedCount; i++) //VER QUITAR ESTE FOR
             payload[i] = (char)readReg(REG_FIFO);
+        
+        // TERMINADOR STRING
+        payload[receivedCount] = '\0'; //Agregado al final
     }
+    
     return true;
 }
 
@@ -498,7 +502,7 @@ int main (int argc, char *argv[]) {
         char temp[128] = {0};
         strncpy(temp, message, sizeof(temp) - 1);
         
-        char tipo = temp[0];
+        char tipo = temp[0];   //Extraer primer byte identificador (2)
         uint64_t current_timestamp = 0;
         uint32_t packet_id = 0;
 
@@ -511,15 +515,28 @@ int main (int argc, char *argv[]) {
         }
 
         if (tipo == '2') {
-            token = strtok(NULL, ","); // packet_id
-            if (token != NULL) {
-                packet_id = strtoul(token, NULL, 10);
-            }
-            token = strtok(NULL, ","); // timestamp
+
+            // timestamp Unix
+            token = strtok(NULL, ",");
+
             if (token != NULL) {
                 current_timestamp = strtoull(token, NULL, 10);
             }
-        } 
+
+            // opcional: usar txNumber como packet_id
+            // avanzar hasta ultimo campo
+            int campo = 2;
+
+            while ((token = strtok(NULL, ",")) != NULL) {
+
+                campo++;
+
+                // ultimo campo = txNumber
+                if (campo == 10) {
+                    packet_id = strtoul(token, NULL, 10);
+                }
+            }
+        }
 
         else {
             printf("Tipo de mensaje desconocido: %c\n", tipo);
