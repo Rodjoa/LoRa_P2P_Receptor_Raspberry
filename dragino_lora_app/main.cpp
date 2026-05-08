@@ -273,7 +273,7 @@ void setupMQTT() {
 
     while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {   //En mqttpaho MQTTCLIENT_SUCCESS  es 0 (funcion se ejecuta sin error) (MQTTClient.h)
         printf("Failed to connect, return code %d. Reconnecting in 5 seconds...\n", rc);
-        delay(5);
+        delay(5000);
     }
     printf("MQTT connected successfully!\n");
 }
