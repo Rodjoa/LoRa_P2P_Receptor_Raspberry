@@ -44,7 +44,7 @@ MQTTClient client;
 MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
 
 //=====Variables auxiliares para los datos
-uint32_t Last_Time_Stamp = 0; //Buffer de 1 dato para el ultimo timestamp recibido
+uint64_t Last_Time_Stamp = 0; //Buffer de 1 dato para el ultimo timestamp recibido
 int rssi_lora;
 char payloadWithRSSI[128];  // Buffer global para concatenar el RSSI
 
@@ -165,11 +165,6 @@ int RST   = 0;
 sf_t sf = SF7;
 uint32_t  freq = 915E6; 
 byte hello[32] = "HELLO";
-
-
-//Variables para evitar duplicados y enrutar al broker respectivo
-uint32_t Last_Time_Stamp_R = 0;
-uint32_t Last_Time_Stamp_I = 0;
 
 
 
@@ -503,7 +498,7 @@ int main (int argc, char *argv[]) {
         strncpy(temp, message, sizeof(temp) - 1);
         
         char tipo = temp[0];
-        uint32_t current_timestamp = 0;
+        uint64_t current_timestamp = 0;
         uint32_t packet_id = 0;
 
         // Parsear segun tipo con mejor manejo de errores
@@ -514,22 +509,17 @@ int main (int argc, char *argv[]) {
             continue;
         }
 
-        if (tipo == 'I') {
+        if (tipo == '2') {
             token = strtok(NULL, ","); // packet_id
             if (token != NULL) {
                 packet_id = strtoul(token, NULL, 10);
             }
             token = strtok(NULL, ","); // timestamp
             if (token != NULL) {
-                current_timestamp = strtoul(token, NULL, 10);
+                current_timestamp = strtoull(token, NULL, 10);
             }
         } 
-        else if (tipo == 'R') {
-            token = strtok(NULL, ","); // timestamp
-            if (token != NULL) {
-                current_timestamp = strtoul(token, NULL, 10);
-            }
-        } 
+
         else {
             printf("Tipo de mensaje desconocido: %c\n", tipo);
             continue;
@@ -537,10 +527,11 @@ int main (int argc, char *argv[]) {
 
         // Evitar duplicados
         uint8_t enviar = 0;
+        
         if (tipo == '2') {
-            if (current_timestamp != Last_Time_Stamp_I) {
+            if (current_timestamp != Last_Time_Stamp) {
                 enviar = 1;
-                Last_Time_Stamp_I = current_timestamp;
+                Last_Time_Stamp = current_timestamp;
                 printf("Nuevo mensaje - ID: %u, TS: %llu\n", packet_id, current_timestamp);
             } else {
                 printf("Mensaje duplicado - ID: %u, TS: %llu\n", packet_id, current_timestamp);
