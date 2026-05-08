@@ -26,8 +26,8 @@
 
 //Dejar listas credenciales para los 2 canales de Thingspeak (MQTT, pero sino se puede http)
 #include "MQTTClient.h"
-//#define ADDRESS     "broker.emqx.io"
-#define ADDRESS     "tcp://54.36.178.49:1883"  //Probamos a ver si agarra
+#define ADDRESS     "broker.emqx.io"
+//#define ADDRESS     "tcp://54.36.178.49:1883"  //Probamos a ver si agarra
 #define PORT 1883 // Agregada al final
 
 
