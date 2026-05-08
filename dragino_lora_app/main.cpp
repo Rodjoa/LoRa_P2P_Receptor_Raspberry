@@ -5,8 +5,6 @@
  * http://www.dragino.com
  *
  *******************************************************************************/
-//Rama: Version Mosquitto_Test
-
 
 #include <string.h> //Ver si se usa esto o se hace con char y punteros
 #include <stdio.h>
@@ -26,28 +24,18 @@
 
 
 
-
-
-
 //Dejar listas credenciales para los 2 canales de Thingspeak (MQTT, pero sino se puede http)
 #include "MQTTClient.h"
-#define ADDRESS     "tcp://test.mosquitto.org:1883"
+//#define ADDRESS     "broker.emqx.io"
+#define ADDRESS     "tcp://54.36.178.49:1883"  //Probamos a ver si agarra
 #define PORT 1883 // Agregada al final
-//#define ADDRESS "tcp://mqtt3.thingspeak.com:1883" //Probar
 
-//Credenciales Raspberry en canales de Thingspeak
 
-//#define CLIENTID    "channels/<3334965>/publish/<IKMHZF0NZRKRJ9OC>"
 #define CLIENTID    "ProtoLoRa_pi3"
-#define TOPIC_1       "MQTT_Examples_IoT"
+#define TOPIC_1       "scootnet_PMM/02/IoT/LoRa"
 #define QOS         1
 #define TIMEOUT     10000L
 
-//Credenciales topico 2
-#define TOPIC_2      "MQTT_Examples_Rendimiento"
-// Credenciales del broker privado
-//#define USERNAME    "CiYhCR0hKxUnBDsrJyo3DBg"
-//#define PASSWORD    "/N8WIkOLztoqOY40P5y4oJYm"
 
 
 
@@ -56,7 +44,7 @@ MQTTClient client;
 MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
 
 //=====Variables auxiliares para los datos
-uint64_t Last_Time_Stamp = 0; //Buffer de 1 dato para el ultimo timestamp recibido
+uint32_t Last_Time_Stamp = 0; //Buffer de 1 dato para el ultimo timestamp recibido
 int rssi_lora;
 char payloadWithRSSI[128];  // Buffer global para concatenar el RSSI
 
@@ -180,8 +168,8 @@ byte hello[32] = "HELLO";
 
 
 //Variables para evitar duplicados y enrutar al broker respectivo
-uint64_t Last_Time_Stamp_R = 0;
-uint64_t Last_Time_Stamp_I = 0;
+uint32_t Last_Time_Stamp_R = 0;
+uint32_t Last_Time_Stamp_I = 0;
 
 
 
@@ -285,7 +273,7 @@ void setupMQTT() {
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
     //Agregamos las credenciales del broker 
-    //conn_opts.username = USERNAME; //Los comentamos porque estamos con broker publico mosquitto
+    //conn_opts.username = USERNAME;
     //conn_opts.password = PASSWORD;
 
     while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {   //En mqttpaho MQTTCLIENT_SUCCESS  es 0 (funcion se ejecuta sin error) (MQTTClient.h)
@@ -314,51 +302,21 @@ void sendToMQTT(char* payload) {
     int rc;
     char primerbyte = localPayload[0];
 
-    if(primerbyte == 'I'){      
-        //AQUI ARRIBA QUITAR PRIMER BYTE Y COMA (EL I de IDENTIFICADOR DE TOPICO)
-        //Formato field1=valor&field2=valor
-        //Partir printeando (debugeando) la payload
-
-        
-        pubmsg.payload = localPayload;
-        pubmsg.payloadlen = (int)strlen(localPayload);
-        pubmsg.qos = QOS;
-        pubmsg.retained = 0;
-
-
-        /*
-        void enviarCanal1(float temperatura, float humedad) {
-            char payload[100];
-            sprintf(payload, "field1=%.2f&field2=%.2f", temperatura, humedad);
-            client.publish(TOPIC_1, payload, QOS, false);
-        }
-        void enviarCanal2(float rssi, float snr) {
-            char payload[100];
-            sprintf(payload, "field1=%.2f&field2=%.2f", rssi, snr);
-            client.publish(TOPIC_2, payload, QOS, false);
-        }
-        
-        */
-
-        
-        
-        while ((rc = MQTTClient_publishMessage(client, TOPIC_1, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
-            printf("Failed to publish message, return code %d. Trying to reconnect...\n", rc);
-            while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
-                printf("Reconnect failed, return code %d. Retrying in 5 seconds...\n", rc);
-                delay(500);
-            }
-            printf("Reconnected to MQTT broker IoT.\n");
-        }
-    }
-    else if(primerbyte == 'R'){
-        // Usar snprintf para evitar desbordamientos. Combina localpayload y rssi_lora yit b
+    
+    else if(primerbyte == '2'){
+        // Usar snprintf para evitar desbordamientos. Combina localpayload y rssi_lora y
         //guarda el resultado en payloadWithRSSI
         snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d", localPayload, rssi_lora);
         //AQUI ARRIBA QUITAR PRIMER BYTE Y COMA (EL R de IDENTIFICADOR DE TOPICO)
         //Formato field1=valor&field2=valor
         //Partir printeando debugeando la payload
 
+        while (!payloadWithRSSI.empty() && payloadWithRSSI[0] != ',') {
+            payloadWithRSSI.erase(0, 1); // Removes 1 character starting at index 0 (the space)
+            }
+        if(!payloadWithRSSI.empty()){
+            payloadWithRSSI.erase(0, 1); // Removes 1 character starting at index 0 (the space)
+        }
 
         pubmsg.payload = payloadWithRSSI;
         pubmsg.payloadlen = (int)strlen(payloadWithRSSI);
@@ -376,6 +334,7 @@ void sendToMQTT(char* payload) {
             printf("Reconnected to MQTT broker Rendimiento.\n");
         }
     }
+    
     else {
         printf("Topico desconocido: %c\n", primerbyte);
         return;
@@ -408,13 +367,9 @@ bool receive(char *payload) {
         byte receivedCount = readReg(REG_RX_NB_BYTES);
         receivedbytes = receivedCount;
         writeReg(REG_FIFO_ADDR_PTR, currentAddr);
-        for(int i = 0; i < receivedCount; i++){ //VER QUITAR ESTE FOR
+        for(int i = 0; i < receivedCount; i++) //VER QUITAR ESTE FOR
             payload[i] = (char)readReg(REG_FIFO);
-        }
-        payload[receivedCount] = '\0'; //dejamos ultimo bit '\0' para marcar el fin
     }
-    
-
     return true;
 }
 
@@ -535,7 +490,7 @@ int main (int argc, char *argv[]) {
         strncpy(temp, message, sizeof(temp) - 1);
         
         char tipo = temp[0];
-        uint64_t current_timestamp = 0;
+        uint32_t current_timestamp = 0;
         uint32_t packet_id = 0;
 
         // Parsear segun tipo con mejor manejo de errores
@@ -553,13 +508,13 @@ int main (int argc, char *argv[]) {
             }
             token = strtok(NULL, ","); // timestamp
             if (token != NULL) {
-                current_timestamp = strtoull(token, NULL, 10);
+                current_timestamp = strtoul(token, NULL, 10);
             }
         } 
         else if (tipo == 'R') {
             token = strtok(NULL, ","); // timestamp
             if (token != NULL) {
-                current_timestamp = strtoull(token, NULL, 10);
+                current_timestamp = strtoul(token, NULL, 10);
             }
         } 
         else {
@@ -573,19 +528,18 @@ int main (int argc, char *argv[]) {
             if (current_timestamp != Last_Time_Stamp_I) {
                 enviar = 1;
                 Last_Time_Stamp_I = current_timestamp;
-                //lu: unsigned long (32 bits) - llu: long long unsigned -> 64bits
-                printf("Nuevo mensaje I - ID: %lu, TS: %llu\n", packet_id, current_timestamp);
+                printf("Nuevo mensaje I - ID: %lu, TS: %lu\n", packet_id, current_timestamp);
             } else {
-                printf("Mensaje I duplicado - ID: %lu, TS: %llu\n", packet_id, current_timestamp);
+                printf("Mensaje I duplicado - ID: %lu, TS: %lu\n", packet_id, current_timestamp);
             }
         } 
         else if (tipo == 'R') {
             if (current_timestamp != Last_Time_Stamp_R) {
                 enviar = 1;
                 Last_Time_Stamp_R = current_timestamp;
-                printf("Nuevo mensaje R - TS: %llu\n", current_timestamp);
+                printf("Nuevo mensaje R - TS: %lu\n", current_timestamp);
             } else {
-                printf("Mensaje R duplicado - TS: %llu\n", current_timestamp);
+                printf("Mensaje R duplicado - TS: %lu\n", current_timestamp);
             }
         }
 
