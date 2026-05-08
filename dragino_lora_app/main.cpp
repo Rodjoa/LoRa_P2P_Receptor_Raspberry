@@ -32,7 +32,7 @@
 
 
 #define CLIENTID    "ProtoLoRa_pi3"
-#define TOPIC_1       "scootnet_PMM/02/IoT/LoRa"
+#define TOPIC      "scootnet_PMM/02/IoT/LoRa"
 #define QOS         1
 #define TIMEOUT     10000L
 
@@ -311,12 +311,14 @@ void sendToMQTT(char* payload) {
         //Formato field1=valor&field2=valor
         //Partir printeando debugeando la payload
 
+        /*
         while (!payloadWithRSSI.empty() && payloadWithRSSI[0] != ',') {
             payloadWithRSSI.erase(0, 1); // Removes 1 character starting at index 0 (the space)
             }
         if(!payloadWithRSSI.empty()){
             payloadWithRSSI.erase(0, 1); // Removes 1 character starting at index 0 (the space)
         }
+         */
 
         pubmsg.payload = payloadWithRSSI;
         pubmsg.payloadlen = (int)strlen(payloadWithRSSI);
@@ -325,7 +327,7 @@ void sendToMQTT(char* payload) {
 
         
 
-        while ((rc = MQTTClient_publishMessage(client, TOPIC_2, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
+        while ((rc = MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
             printf("Failed to publish message, return code %d. Trying to reconnect...\n", rc);
             while ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
                 printf("Reconnect failed, return code %d. Retrying in 5 seconds...\n", rc);
@@ -373,40 +375,51 @@ bool receive(char *payload) {
     return true;
 }
 
-bool receivepacket() {    //Modificaremos esto para controlar la llegada de nuevos paquetes por variable booleana (cambiamos de void a bool) (agrega returns booleanos)
-    /*
-    printf("\n Entrando a funcion receivepacket() \n")
-    printf()
-    */
+bool receivepacket() {
 
     long int SNR;
     int rssicorr;
+
     if(digitalRead(dio0) == 1) {
+
         if(receive(message)) {
+
             byte value = readReg(REG_PKT_SNR_VALUE);
-            if( value & 0x80 ) value = ( ( ~value + 1 ) & 0xFF ) >> 2, SNR = -value;
-            else SNR = ( value & 0xFF ) >> 2;
+
+            if(value & 0x80)
+                value = ((~value + 1) & 0xFF) >> 2, SNR = -value;
+            else
+                SNR = (value & 0xFF) >> 2;
 
             rssicorr = sx1272 ? 139 : 157;
-            printf("Packet RSSI: %d, RSSI: %d, SNR: %li, Length: %i\n", readReg(0x1A)-rssicorr, readReg(0x1B)-rssicorr, SNR, (int)receivedbytes);
+
+            printf("Packet RSSI: %d, RSSI: %d, SNR: %li, Length: %i\n",
+                   readReg(0x1A)-rssicorr,
+                   readReg(0x1B)-rssicorr,
+                   SNR,
+                   (int)receivedbytes);
+
             printf("Payload: %s\n", message);
-            int rssiReal = readReg(0x1A) - rssicorr;   //Este es el RSSI corregido (el mismo que se printea primero)
+
+            int rssiReal = readReg(0x1A) - rssicorr;
             rssi_lora = rssiReal;
+
             printf("Aca imprimimos el rssi que sacamos: %d\n", rssi_lora);
 
-            
-            
-            // Limpiamos IRQ para que dio0 vuelva a LOW
+            // Limpiamos IRQ
             writeReg(REG_IRQ_FLAGS, IRQ_LORA_RXDONE_MASK);
-            // Preparamos receptor para siguiente paquete
+
+            // Volver a RX
             opmode(OPMODE_RX);
 
             return true;
         }
-        else{
+        else {
             return false;
         }
     }
+
+    return false;
 }
 
 /* CONFIGURAR POTENCIA */
@@ -524,24 +537,15 @@ int main (int argc, char *argv[]) {
 
         // Evitar duplicados
         uint8_t enviar = 0;
-        if (tipo == 'I') {
+        if (tipo == '2') {
             if (current_timestamp != Last_Time_Stamp_I) {
                 enviar = 1;
                 Last_Time_Stamp_I = current_timestamp;
-                printf("Nuevo mensaje I - ID: %lu, TS: %lu\n", packet_id, current_timestamp);
+                printf("Nuevo mensaje - ID: %u, TS: %llu\n", packet_id, current_timestamp);
             } else {
-                printf("Mensaje I duplicado - ID: %lu, TS: %lu\n", packet_id, current_timestamp);
+                printf("Mensaje duplicado - ID: %u, TS: %llu\n", packet_id, current_timestamp);
             }
         } 
-        else if (tipo == 'R') {
-            if (current_timestamp != Last_Time_Stamp_R) {
-                enviar = 1;
-                Last_Time_Stamp_R = current_timestamp;
-                printf("Nuevo mensaje R - TS: %lu\n", current_timestamp);
-            } else {
-                printf("Mensaje R duplicado - TS: %lu\n", current_timestamp);
-            }
-        }
 
         // Enviar si corresponde
         if (enviar) {
