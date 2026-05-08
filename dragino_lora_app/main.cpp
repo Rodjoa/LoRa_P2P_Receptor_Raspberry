@@ -31,7 +31,7 @@
 #define PORT 1883 // Agregada al final
 
 
-#define CLIENTID    "ProtoLoRa_pi3"
+#define CLIENTID    "ProtoLoRa_pi3_01k"
 #define TOPIC      "scootnet_PMM/02/IoT/LoRa"
 #define QOS         1
 #define TIMEOUT     10000L
@@ -527,7 +527,7 @@ int main (int argc, char *argv[]) {
 
         // Evitar duplicados
         uint8_t enviar = 0;
-        
+
         if (tipo == '2') {
             if (current_timestamp != Last_Time_Stamp) {
                 enviar = 1;
