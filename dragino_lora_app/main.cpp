@@ -150,6 +150,7 @@ char payloadWithRSSI[128];  // Buffer global para concatenar el RSSI
 #define MAP_DIO2_LORA_NOP      0xC0
 
 typedef unsigned char byte;
+float SNR_LoRa;
 
 static const int CHANNEL = 0;
 
@@ -165,6 +166,7 @@ int RST   = 0;
 sf_t sf = SF7;
 uint32_t  freq = 915E6; 
 byte hello[32] = "HELLO";
+
 
 
 
@@ -302,26 +304,12 @@ void sendToMQTT(char* payload) {
     if(primerbyte == '2'){
         // Usar snprintf para evitar desbordamientos. Combina localpayload y rssi_lora y
         //guarda el resultado en payloadWithRSSI
-        snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d", localPayload, rssi_lora);
-        //AQUI ARRIBA QUITAR PRIMER BYTE Y COMA (EL R de IDENTIFICADOR DE TOPICO)
-        //Formato field1=valor&field2=valor
-        //Partir printeando debugeando la payload
-
-        /*
-        while (!payloadWithRSSI.empty() && payloadWithRSSI[0] != ',') {
-            payloadWithRSSI.erase(0, 1); // Removes 1 character starting at index 0 (the space)
-            }
-        if(!payloadWithRSSI.empty()){
-            payloadWithRSSI.erase(0, 1); // Removes 1 character starting at index 0 (the space)
-        }
-         */
+        snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d","f", localPayload, rssi_lora, SNR_LoRa);
 
         pubmsg.payload = payloadWithRSSI;
         pubmsg.payloadlen = (int)strlen(payloadWithRSSI);
         pubmsg.qos = QOS;
         pubmsg.retained = 0;
-
-        
 
         while ((rc = MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token)) != MQTTCLIENT_SUCCESS) {
             printf("Failed to publish message, return code %d. Trying to reconnect...\n", rc);
@@ -342,7 +330,7 @@ void sendToMQTT(char* payload) {
     
     // DEBUG: Verificar que se esta enviando
     printf("Enviado - Tipo: %c, Payload: %s\n", primerbyte, 
-           primerbyte == 'R' ? payloadWithRSSI : localPayload);
+           primerbyte == '2' ? payloadWithRSSI : localPayload);
 }
 
 /* ############ FUNCIONES DE RECEPCION ############ */
@@ -377,7 +365,6 @@ bool receive(char *payload) {
 
 bool receivepacket() {
 
-    long int SNR;
     int rssicorr;
 
     if(digitalRead(dio0) == 1) {
@@ -386,17 +373,21 @@ bool receivepacket() {
 
             byte value = readReg(REG_PKT_SNR_VALUE);
 
+            /*
             if(value & 0x80)
                 value = ((~value + 1) & 0xFF) >> 2, SNR = -value;
             else
                 SNR = (value & 0xFF) >> 2;
+            */
+
+            SNR_LoRa = ((int8_t)readReg(REG_PKT_SNR_VALUE)) * 0.25; //Agregado
 
             rssicorr = sx1272 ? 139 : 157;
 
-            printf("Packet RSSI: %d, RSSI: %d, SNR: %li, Length: %i\n",
+            printf("Packet RSSI: %d, RSSI: %d, SNR: %f, Length: %i\n",
                    readReg(0x1A)-rssicorr,
                    readReg(0x1B)-rssicorr,
-                   SNR,
+                   SNR_LoRa,
                    (int)receivedbytes);
 
             printf("Payload: %s\n", message);
