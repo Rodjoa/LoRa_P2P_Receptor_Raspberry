@@ -305,8 +305,8 @@ void sendToMQTT(char* payload) {
     if(primerbyte == '2'){
         // Usar snprintf para evitar desbordamientos. Combina localpayload y rssi_lora y
         //guarda el resultado en payloadWithRSSI
-        snprintf(aux, sizeof(aux), "%s,%d", localPayload, rssi_lora);
-        snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%.2f", aux, SNR_LoRa);
+        snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d,%.2f", 
+                 localPayload, rssi_lora, SNR_LoRa);
 
         pubmsg.payload = payloadWithRSSI;
         pubmsg.payloadlen = (int)strlen(payloadWithRSSI);
