@@ -299,12 +299,14 @@ void sendToMQTT(char* payload) {
     MQTTClient_deliveryToken token;
     int rc;
     char primerbyte = localPayload[0];
+    char aux[256];
 
     
     if(primerbyte == '2'){
         // Usar snprintf para evitar desbordamientos. Combina localpayload y rssi_lora y
         //guarda el resultado en payloadWithRSSI
-        snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d","%.2f", localPayload, rssi_lora, SNR_LoRa);
+        snprintf(aux, sizeof(aux), "%s,%d", localPayload, rssi_lora);
+        snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%.2f", aux, SNR_LoRa);
 
         pubmsg.payload = payloadWithRSSI;
         pubmsg.payloadlen = (int)strlen(payloadWithRSSI);
@@ -511,7 +513,7 @@ int main (int argc, char *argv[]) {
             token = strtok(NULL, ",");
 
             if (token != NULL) {
-                current_timestamp = strtoull(token, NULL, 10);
+                current_timestamp = strtoull(token, NULL, 11); //cambie 10 por 11
             }
 
             // opcional: usar txNumber como packet_id
@@ -523,8 +525,8 @@ int main (int argc, char *argv[]) {
                 campo++;
 
                 // ultimo campo = txNumber
-                if (campo == 10) {
-                    packet_id = strtoul(token, NULL, 10);
+                if (campo == 11) {
+                    packet_id = strtoul(token, NULL, 11); //cambie 10 por 11
                 }
             }
         }
