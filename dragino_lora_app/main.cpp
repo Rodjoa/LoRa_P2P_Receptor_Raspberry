@@ -46,7 +46,7 @@ MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
 //=====Variables auxiliares para los datos
 uint64_t Last_Time_Stamp = 0; //Buffer de 1 dato para el ultimo timestamp recibido
 int rssi_lora;
-char payloadWithRSSI[128];  // Buffer global para concatenar el RSSI
+char payloadWithRSSI[256];  // Buffer global para concatenar el RSSI
 
 
 /* ################# CONFIGURACION DEL LORA ################# */
@@ -304,7 +304,7 @@ void sendToMQTT(char* payload) {
     if(primerbyte == '2'){
         // Usar snprintf para evitar desbordamientos. Combina localpayload y rssi_lora y
         //guarda el resultado en payloadWithRSSI
-        snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d","f", localPayload, rssi_lora, SNR_LoRa);
+        snprintf(payloadWithRSSI, sizeof(payloadWithRSSI), "%s,%d","%.2f", localPayload, rssi_lora, SNR_LoRa);
 
         pubmsg.payload = payloadWithRSSI;
         pubmsg.payloadlen = (int)strlen(payloadWithRSSI);
