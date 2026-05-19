@@ -513,7 +513,7 @@ int main (int argc, char *argv[]) {
             token = strtok(NULL, ",");
 
             if (token != NULL) {
-                current_timestamp = strtoull(token, NULL, 11); //cambie 10 por 11
+                current_timestamp = strtoull(token, NULL, 10); //cambie 11 por 10
             }
 
             // opcional: usar txNumber como packet_id
@@ -525,8 +525,9 @@ int main (int argc, char *argv[]) {
                 campo++;
 
                 // ultimo campo = txNumber
-                if (campo == 11) {
-                    packet_id = strtoul(token, NULL, 11); //cambie 10 por 11
+                if (campo == 9) { //cambie 11 por 9
+                    packet_id = strtoul(token, NULL, 10); //cambie 11 por 10
+                    
                 }
             }
         }
