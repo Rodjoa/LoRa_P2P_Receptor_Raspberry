@@ -163,7 +163,7 @@ enum sf_t { SF7=7, SF8, SF9, SF10, SF11, SF12 };
 int ssPin = 6;
 int dio0  = 7;
 int RST   = 0;
-sf_t sf = SF9;
+sf_t sf = SF7;
 uint32_t  freq = 915E6; 
 byte hello[32] = "HELLO";
 
