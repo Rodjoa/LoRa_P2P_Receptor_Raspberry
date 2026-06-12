@@ -485,6 +485,8 @@ int main (int argc, char *argv[]) {
         opmode(OPMODE_STANDBY);
         opmode(OPMODE_RX);
         printf("Listening at SF%i on %.6lf Mhz.\n", sf,(double)freq/1000000);
+        printf("SF=%d\n", sf);
+        printf("MODEM_CONFIG2=0x%02X\n", (sf<<4)|0x04);
         fflush(stdout);
         printf("debuggeando en else if not sender\n");
         fflush(stdout);
