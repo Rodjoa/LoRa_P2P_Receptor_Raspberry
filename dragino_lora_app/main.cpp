@@ -158,7 +158,7 @@ char message[128];  //Lo aumentamos de 50 a 128
 bool sx1272 = true;
 byte receivedbytes;
 
-enum sf_t { SF7=7, SF8, SF9, SF10, SF11, SF12 };
+enum sf_t { SF7=7, SF8=8, SF9, SF10, SF11, SF12 };
 
 int ssPin = 6;
 int dio0  = 7;
